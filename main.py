@@ -96,10 +96,6 @@ def get_player_profile(player_name):
     }
 
 
-    # ==========================================
-    # PER 90 STATISTICS
-    # ==========================================
-
     player_profile["goals_per_90"] = (
         player_profile["goals"] / minutes
     ) * 90
