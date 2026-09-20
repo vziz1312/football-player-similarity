@@ -1,6 +1,8 @@
 import requests
 import math
 import os
+import json
+import unicodedata
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,8 +14,28 @@ headers = {
     "x-apisports-key": API_KEY
 }
 
+def normalize_name(name):
+    name=name.lower()
+    name=unicodedata.normalize("NFD", name)
+    name="".join(
+        char for char in name if unicodedata.category(char) != "Mn"
+    )
+    return name
 
 def get_player_profile(player_name):
+
+    players = load_player_profiles()
+    search_name = normalize_name(player_name)
+
+    for saved_player in players:
+        saved_name = normalize_name(saved_player["name"])
+
+        if search_name in saved_name:
+            print(
+                "Player found in local storage:",
+                saved_player["name"]
+            )
+            return saved_player
 
     params = {
         "search": player_name,
@@ -39,7 +61,6 @@ def get_player_profile(player_name):
 
     data = response.json()
 
-    # Check API errors first
     if data["errors"]:
         print("API Error:", data["errors"])
         return None
@@ -50,14 +71,33 @@ def get_player_profile(player_name):
         len(data["response"])
     )
 
-    # Player doesn't exist / wasn't found
     if not data["response"]:
         print("Player not found.")
         return None
 
-    player = data["response"][0]["player"]
+    player = None
+    stats = None
 
-    stats = data["response"][0]["statistics"][0]
+    search_name = normalize_name(player_name)
+
+    for result in data["response"]:
+
+        candidate = result["player"]
+        candidate_name = normalize_name(candidate["name"])
+
+        if search_name in candidate_name:
+            if not result["statistics"]:
+                continue
+            candidate_stats = result["statistics"][0]
+            if not candidate_stats["games"]["minutes"]:
+                continue
+            player = candidate
+            stats = candidate_stats
+            break
+
+    if player is None:
+        print("Exact player match not found.")
+        return None
 
     minutes = stats["games"]["minutes"]
 
@@ -65,8 +105,9 @@ def get_player_profile(player_name):
         print("Player has no minutes.")
         return None
 
-
     player_profile = {
+
+        "id": player["id"],
 
         "name": player["name"],
 
@@ -94,7 +135,6 @@ def get_player_profile(player_name):
 
         "fouls_drawn": stats["fouls"]["drawn"]
     }
-
 
     player_profile["goals_per_90"] = (
         player_profile["goals"] / minutes
@@ -128,8 +168,24 @@ def get_player_profile(player_name):
         player_profile["duels_won"] / minutes
     ) * 90
 
+    save_player_profile(player_profile)
+
     return player_profile
 
+def save_player_profile(profile):
+    with open("players.json", "r") as file:
+        players=json.load(file)
+    players.append(profile)
+
+    with open("players.json", "w") as file:
+        json.dump(players, file, indent=4)
+
+def load_player_profiles():
+    with open("players.json", "r") as file:
+        players=json.load(file)
+    return players
+
+   
 
 def cosine_similarity(vector1, vector2):
 
@@ -169,7 +225,14 @@ def cosine_similarity(vector1, vector2):
 
 player_pool = [
 
-    "rodrygo"
+    "rodrygo",
+    "borja mayoral",
+    "pedri",
+    "ferran torres",
+    "joselu",
+    "hugo duro",
+    "mikel oyarzabal",
+    "marcos llorente",
 
 ]
 
@@ -186,13 +249,41 @@ for player_name in player_pool:
 
         pool_profiles.append(profile)
 
-
+for profile in pool_profiles:
+    print(
+        profile["name"],
+        "→",profile["position"],
+    )
 print(
     "Number of profiles:",
     len(pool_profiles)
 )
 
+player1_name = input(
+    "Enter first player: "
+)
 
+player2_name = input(
+    "Enter second player: "
+)
+
+
+player1 = get_player_profile(
+    player1_name
+)
+
+player2 = get_player_profile(
+    player2_name
+)
+
+
+if not player1 or not player2:
+
+    print(
+        "Could not find one or both players."
+    )
+
+    exit()
 
 
 if not pool_profiles:
@@ -202,6 +293,10 @@ if not pool_profiles:
     exit()
 
 
+filtered_pool=[]
+for profile in pool_profiles:
+    if profile["position"] == player1["position"]:
+        filtered_pool.append(profile)
 
 features = [
 
@@ -228,7 +323,7 @@ features = [
 
 pool_vectors = []
 
-for profile in pool_profiles:
+for profile in filtered_pool:
 
     vector = []
 
@@ -287,7 +382,7 @@ for feature_index in range(
 normalized_player_vectors = []
 
 for player_index in range(
-    len(pool_profiles)
+    len(filtered_pool)
 ):
 
     vector = []
@@ -309,31 +404,7 @@ for player_index in range(
     )
 
 
-player1_name = input(
-    "Enter first player: "
-)
 
-player2_name = input(
-    "Enter second player: "
-)
-
-
-player1 = get_player_profile(
-    player1_name
-)
-
-player2 = get_player_profile(
-    player2_name
-)
-
-
-if not player1 or not player2:
-
-    print(
-        "Could not find one or both players."
-    )
-
-    exit()
 
 target_vector = []
 
@@ -375,11 +446,15 @@ for feature_index in range(
 
 
 
-similarities = []
+similar_players = []
 
 for i in range(
-    len(pool_profiles)
+    len(filtered_pool)
 ):
+
+    if filtered_pool[i]["name"].lower() == player1["name"].lower():
+
+        continue
 
     similarity = cosine_similarity(
 
@@ -389,35 +464,43 @@ for i in range(
 
     )
 
-    similarities.append(
-        similarity
+    similar_players.append(
+        (
+            filtered_pool[i]["name"],
+            similarity
+        )
     )
 
+
+similar_players.sort(
+    key=lambda x: x[1],
+    reverse=True
+)
 
 
 print(
-    "\n===== SIMILARITY TEST ====="
+    "\n===== SIMILAR PLAYERS ====="
+)
+print(
+    "target :",
+    player1["name"]
+
+)
+print(
+    "position :",
+    player1["position"]
 )
 
-for i in range(
-    len(pool_profiles)
-):
+for i,(name, similarity) in enumerate(similar_players[:5], start=1):
 
     print(
-
-        pool_profiles[i]["name"],
-
+        i,
+        ".",
+        name,
         ":",
-
-        round(
-            similarities[i],
-            3
-        )
-
+        round(similarity *100, 2),
+        "%"
     )
-
-
-
 
 vector1 = []
 
