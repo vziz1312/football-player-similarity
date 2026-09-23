@@ -1,18 +1,7 @@
-import requests
 import math
-import os
 import json
 import unicodedata
-from dotenv import load_dotenv
 
-load_dotenv()
-API_KEY=os.getenv("API_KEY")
-
-url = "https://v3.football.api-sports.io/players"
-
-headers = {
-    "x-apisports-key": API_KEY
-}
 
 def normalize_name(name):
     name=name.lower()
@@ -37,140 +26,8 @@ def get_player_profile(player_name):
             )
             return saved_player
 
-    params = {
-        "search": player_name,
-        "league": 140,
-        "season": 2023
-    }
-
-    response = requests.get(
-        url,
-        headers=headers,
-        params=params
-    )
-
-    print(
-        "Daily limit:",
-        response.headers.get("x-ratelimit-requests-limit")
-    )
-
-    print(
-        "Remaining today:",
-        response.headers.get("x-ratelimit-requests-remaining")
-    )
-
-    data = response.json()
-
-    if data["errors"]:
-        print("API Error:", data["errors"])
-        return None
-
-    print(
-        player_name,
-        "→ results:",
-        len(data["response"])
-    )
-
-    if not data["response"]:
-        print("Player not found.")
-        return None
-
-    player = None
-    stats = None
-
-    search_name = normalize_name(player_name)
-
-    for result in data["response"]:
-
-        candidate = result["player"]
-        candidate_name = normalize_name(candidate["name"])
-
-        if search_name in candidate_name:
-            if not result["statistics"]:
-                continue
-            candidate_stats = result["statistics"][0]
-            if not candidate_stats["games"]["minutes"]:
-                continue
-            player = candidate
-            stats = candidate_stats
-            break
-
-    if player is None:
-        print("Exact player match not found.")
-        return None
-
-    minutes = stats["games"]["minutes"]
-
-    if not minutes:
-        print("Player has no minutes.")
-        return None
-
-    player_profile = {
-
-        "id": player["id"],
-
-        "name": player["name"],
-
-        "position": stats["games"]["position"],
-
-        "minutes": minutes,
-
-        "rating": float(stats["games"]["rating"]),
-
-        "goals": stats["goals"]["total"],
-
-        "assists": stats["goals"]["assists"],
-
-        "shots": stats["shots"]["total"],
-
-        "passes": stats["passes"]["total"],
-
-        "key_passes": stats["passes"]["key"],
-
-        "dribbles": stats["dribbles"]["attempts"],
-
-        "duels": stats["duels"]["total"],
-
-        "duels_won": stats["duels"]["won"],
-
-        "fouls_drawn": stats["fouls"]["drawn"]
-    }
-
-    player_profile["goals_per_90"] = (
-        player_profile["goals"] / minutes
-    ) * 90
-
-    player_profile["assists_per_90"] = (
-        player_profile["assists"] / minutes
-    ) * 90
-
-    player_profile["shots_per_90"] = (
-        player_profile["shots"] / minutes
-    ) * 90
-
-    player_profile["passes_per_90"] = (
-        player_profile["passes"] / minutes
-    ) * 90
-
-    player_profile["key_passes_per_90"] = (
-        player_profile["key_passes"] / minutes
-    ) * 90
-
-    player_profile["dribbles_per_90"] = (
-        player_profile["dribbles"] / minutes
-    ) * 90
-
-    player_profile["duels_per_90"] = (
-        player_profile["duels"] / minutes
-    ) * 90
-
-    player_profile["duels_won_per_90"] = (
-        player_profile["duels_won"] / minutes
-    ) * 90
-
-    save_player_profile(player_profile)
-
-    return player_profile
+    print("Player not found in local dataset.")
+    return None
 
 def save_player_profile(profile):
     with open("players.json", "r") as file:
@@ -185,7 +42,7 @@ def load_player_profiles():
         players=json.load(file)
     return players
 
-   
+
 
 def cosine_similarity(vector1, vector2):
 
@@ -224,16 +81,14 @@ def cosine_similarity(vector1, vector2):
 
 
 player_pool = [
-
-    "rodrygo",
-    "borja mayoral",
-    "pedri",
-    "ferran torres",
-    "joselu",
-    "hugo duro",
-    "mikel oyarzabal",
-    "marcos llorente",
-
+    "witsel",
+    "oblak",
+    "gimenez",
+    "griezmann",
+    "morata",
+    "lewandowski",
+    "de jong",
+    "gundogan",
 ]
 
 

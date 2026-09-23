@@ -39,7 +39,7 @@ def save_player_profile(profile):
 
     updated = False
     for i in range(len(players)):
-        if players[i]["id"] == profile["id"]:
+        if (players[i]["id"] == profile["id"]) and (players[i].get("team_id") == profile["team_id"]):
             players[i] = profile
             updated = True
             break
@@ -61,8 +61,12 @@ def validate_player(result):
         print("No statistics available for", result["player"]["name"])
         return False
     stats =result["statistics"][0]
-    if not stats["games"]["minutes"]:
+    minutes =stats["games"]["minutes"]
+    if not minutes:
         print("No minutes played for", result["player"]["name"])
+        return False
+    if minutes <450 :
+        print("not enough minutes played for", result["player"]["name"])
         return False
     return True
 
@@ -71,7 +75,10 @@ def safe_number(value):
     if value is None:
         return 0
 
-    return value
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return 0
 
 def transform_player(result):
 
@@ -82,7 +89,6 @@ def transform_player(result):
         return None
 
     stats = result["statistics"][0]
-
     minutes = stats["games"]["minutes"]
 
     if not minutes:
@@ -93,6 +99,8 @@ def transform_player(result):
 
         "id": player["id"],
         "name": player["name"],
+        "team_id": stats["team"]["id"],
+        "team_name": stats["team"]["name"],
         "position": stats["games"]["position"],
         "minutes": minutes,
 
@@ -278,6 +286,46 @@ def collect_league_page(page):
 
     return data["response"]
 
+def migrate_players():
+    if os.path.exists("players_new.json"):
+        print("Migration already completed. File exists: players_new.json")
+        return
+
+    migrated_players = []
+
+    for page in range(1, 4):
+
+        print()
+        print("==============================")
+        print("Migrating page:", page)
+        print("==============================")
+
+        players = collect_league_page(page)
+
+        if not players:
+            print("No players returned. Stopping.")
+            break
+
+        for result in players:
+
+            print()
+            print("Processing:", result["player"]["name"])
+
+            if not validate_player(result):
+                continue
+
+            profile = transform_player(result)
+
+            if profile:
+                migrated_players.append(profile)
+
+    with open("players_new.json", "w") as file:
+        json.dump(migrated_players, file, indent=4)
+
+    print()
+    print("Migration complete.")
+    print("New records:", len(migrated_players))
+
 def collect_league():
 
     seen_ids = set()
@@ -325,4 +373,15 @@ def collect_league():
             if profile:
                 save_player_profile(profile)
 
-collect_league()
+#collect_league()
+#migrate_players()
+with open("players_new.json", "r") as file:
+    players = json.load(file)
+
+missing_team = 0
+
+for player in players:
+    if "team_id" not in player or "team_name" not in player:
+        missing_team += 1
+
+print("Records missing team data:", missing_team)
