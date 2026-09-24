@@ -80,6 +80,171 @@ def safe_number(value):
     except (ValueError, TypeError):
         return 0
 
+def statistics_signature(stats):
+    return (
+        stats["games"]["minutes"],
+        stats["goals"]["total"],
+        stats["goals"]["assists"],
+        stats["shots"]["total"],
+        stats["passes"]["total"],
+        stats["passes"]["key"],
+        stats["dribbles"]["attempts"],
+        stats["duels"]["total"],
+        stats["duels"]["won"]
+    )
+
+def get_team_statistics(result):
+
+    statistics = result["statistics"]
+
+    if not statistics:
+        print("No statistics available for", result["player"]["name"])
+        return None
+
+    unique_statistics = []
+    seen_signatures = set()
+
+    for stats in statistics:
+
+        signature = statistics_signature(stats)
+
+        if signature in seen_signatures:
+            print(
+                "Duplicate statistics detected for:",
+                result["player"]["name"],
+                "| Team:",
+                stats["team"]["name"]
+            )
+            continue
+
+        seen_signatures.add(signature)
+        unique_statistics.append(stats)
+
+    if not unique_statistics:
+        return None
+
+    if len(unique_statistics) == 1:
+        return unique_statistics[0]
+
+    print()
+    print(
+        "Multiple unique team statistics found for:",
+        result["player"]["name"]
+    )
+
+    total_minutes = 0
+    total_goals = 0
+    total_assists = 0
+    total_shots = 0
+    total_rating = 0
+    total_passes = 0
+    total_key_passes = 0
+    total_dribbles = 0
+    total_duels = 0
+    total_duels_won = 0
+    total_fouls_drawn = 0
+
+    for stats in unique_statistics:
+
+        print(
+            "Aggregating:",
+            stats["team"]["name"]
+        )
+
+        total_minutes += safe_number(
+            stats["games"]["minutes"]
+        )
+
+        total_goals += safe_number(
+            stats["goals"]["total"]
+        )
+
+        total_assists += safe_number(
+            stats["goals"]["assists"]
+        )
+
+        total_shots += safe_number(
+            stats["shots"]["total"]
+        )
+
+        total_passes += safe_number(
+            stats["passes"]["total"]
+        )
+
+        total_key_passes += safe_number(
+            stats["passes"]["key"]
+        )
+
+        total_dribbles += safe_number(
+            stats["dribbles"]["attempts"]
+        )
+
+        total_duels += safe_number(
+            stats["duels"]["total"]
+        )
+
+        total_duels_won += safe_number(
+            stats["duels"]["won"]
+        )
+
+        total_fouls_drawn += safe_number(
+            stats["fouls"]["drawn"]
+        )
+        
+        if stats["games"]["rating"] is not None:
+            total_rating += (
+                float(stats["games"]["rating"])
+                * safe_number(stats["games"]["minutes"])
+            )
+    average_rating = (
+    total_rating / total_minutes
+    if total_minutes > 0
+    else 0
+)
+
+    aggregated_stats = {
+        "team": {
+            "id": None,
+            "name": "Multiple teams"
+        },
+
+        "games": {
+            "minutes": total_minutes,
+            "position": unique_statistics[0]["games"]["position"],
+            "rating": average_rating
+            
+        },
+
+        "goals": {
+            "total": total_goals,
+            "assists": total_assists
+        },
+
+        "shots": {
+            "total": total_shots
+        },
+
+        "passes": {
+            "total": total_passes,
+            "key": total_key_passes
+        },
+
+        "dribbles": {
+            "attempts": total_dribbles
+        },
+
+        "duels": {
+            "total": total_duels,
+            "won": total_duels_won
+        },
+
+        "fouls": {
+            "drawn": total_fouls_drawn
+        }
+    }
+
+    return aggregated_stats
+
 def transform_player(result):
 
     player = result["player"]
@@ -88,7 +253,12 @@ def transform_player(result):
         print("No statistics available for", player["name"])
         return None
 
-    stats = result["statistics"][0]
+    stats = get_team_statistics(result)
+    if not stats:
+        return None
+    
+    print()
+    print("Transforming team:", stats["team"]["name"])
     minutes = stats["games"]["minutes"]
 
     if not minutes:
@@ -251,7 +421,11 @@ def collect_player(player_name):
         if search_name in candidate_name:
 
             print("Selected:", candidate["name"])
-
+            print("number of statistics:", len(result["statistics"]))
+            for stats in result["statistics"]:
+                print("Team:", stats["team"]["name"])
+                print("Minutes:", stats["games"]["minutes"])
+                print("Goals:", stats["goals"]["total"])
             return result
 
     print("Exact player match not found.")
@@ -375,13 +549,20 @@ def collect_league():
 
 #collect_league()
 #migrate_players()
-with open("players_new.json", "r") as file:
-    players = json.load(file)
+result = collect_player("Witsel")
 
-missing_team = 0
+if result:
 
-for player in players:
-    if "team_id" not in player or "team_name" not in player:
-        missing_team += 1
+    print()
+    print("Testing final multi-team handling...")
 
-print("Records missing team data:", missing_team)
+    profile = transform_player(result)
+
+    if profile:
+        print()
+        print("FINAL PROFILE")
+        print("Name:", profile["name"])
+        print("Team:", profile["team_name"])
+        print("Minutes:", profile["minutes"])
+        print("Goals:", profile["goals"])
+        print("Goals per 90:", profile["goals_per_90"])
