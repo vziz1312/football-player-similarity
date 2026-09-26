@@ -4,3 +4,4 @@ __pycache__/
 players_backup.json
 players_new.json
 football.db
+football_backup.db
