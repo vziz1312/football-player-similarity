@@ -1,5 +1,6 @@
 import sqlite3
-
+def get_connection():
+    return sqlite3.connect("football.db")
 
 def create_players_table(cursor):
     cursor.execute("""
@@ -66,6 +67,59 @@ def create_player_stats_table(cursor):
             FOREIGN KEY (season_id) REFERENCES seasons(id)
         )
     """)
+
+
+def insert_player(cursor, player_id, name, position):
+    cursor.execute("""
+        INSERT OR IGNORE INTO players (id, name, position)
+        VALUES (?, ?, ?)
+    """, (player_id, name, position))
+
+
+def insert_team(cursor, team_id, team_name):
+    cursor.execute("""
+        INSERT OR IGNORE INTO teams (id, name)
+        VALUES (?, ?)
+    """, (team_id, team_name))
+
+
+def insert_player_stats(cursor, profile, league_id, season_id):
+    cursor.execute("""
+        INSERT OR REPLACE INTO player_stats (
+            player_id,
+            team_id,
+            league_id,
+            season_id,
+            minutes,
+            rating,
+            goals,
+            assists,
+            shots,
+            passes,
+            key_passes,
+            dribbles,
+            duels,
+            duels_won,
+            fouls_drawn
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        profile["id"],
+        profile["team_id"],
+        league_id,
+        season_id,
+        profile["minutes"],
+        profile["rating"],
+        profile["goals"],
+        profile["assists"],
+        profile["shots"],
+        profile["passes"],
+        profile["key_passes"],
+        profile["dribbles"],
+        profile["duels"],
+        profile["duels_won"],
+        profile["fouls_drawn"]
+    ))
 
 
 def insert_league(cursor, league_id, league_name):

@@ -1,3 +1,4 @@
+import database
 import requests 
 import os
 import json 
@@ -326,6 +327,37 @@ def transform_player(result):
     return player_profile
 
 
+def save_player_to_database(profile):
+    connection = database.get_connection()
+
+    cursor = connection.cursor()
+
+    database.insert_player(
+        cursor,
+        profile["id"],
+        profile["name"],
+        profile["position"]
+    )
+
+    database.insert_team(
+        cursor,
+        profile["team_id"],
+        profile["team_name"]
+    )
+
+    database.insert_player_stats(
+        cursor,
+        profile,
+        140,
+        2023
+    )
+
+    connection.commit()
+    connection.close()
+
+    print("Player saved to database:", profile["name"])
+
+
 def get_saved_players(player_name):
     try:
         with open("players.json", "r") as file:
@@ -365,7 +397,7 @@ def process_player(player_name):
     if not profile:
         return None
 
-    save_player_profile(profile)
+    save_player_to_database(profile)
 
     return profile
 
@@ -549,20 +581,20 @@ def collect_league():
 
 #collect_league()
 #migrate_players()
-result = collect_player("Witsel")
+if __name__ == "__main__":
+    result = collect_player("Witsel")
 
-if result:
-
-    print()
-    print("Testing final multi-team handling...")
-
-    profile = transform_player(result)
-
-    if profile:
+    if result:
         print()
-        print("FINAL PROFILE")
-        print("Name:", profile["name"])
-        print("Team:", profile["team_name"])
-        print("Minutes:", profile["minutes"])
-        print("Goals:", profile["goals"])
-        print("Goals per 90:", profile["goals_per_90"])
+        print("Testing final multi-team handling...")
+
+        profile = transform_player(result)
+
+        if profile:
+            print()
+            print("FINAL PROFILE")
+            print("Name:", profile["name"])
+            print("Team:", profile["team_name"])
+            print("Minutes:", profile["minutes"])
+            print("Goals:", profile["goals"])
+            print("Goals per 90:", profile["goals_per_90"])
