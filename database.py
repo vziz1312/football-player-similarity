@@ -85,7 +85,7 @@ def insert_team(cursor, team_id, team_name):
 
 def insert_player_stats(cursor, profile, league_id, season_id):
     cursor.execute("""
-        INSERT OR REPLACE INTO player_stats (
+        INSERT INTO player_stats (
             player_id,
             team_id,
             league_id,
@@ -103,6 +103,19 @@ def insert_player_stats(cursor, profile, league_id, season_id):
             fouls_drawn
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(player_id, team_id, league_id, season_id)
+        DO UPDATE SET
+            minutes = excluded.minutes,
+            rating = excluded.rating,
+            goals = excluded.goals,
+            assists = excluded.assists,
+            shots = excluded.shots,
+            passes = excluded.passes,
+            key_passes = excluded.key_passes,
+            dribbles = excluded.dribbles,
+            duels = excluded.duels,
+            duels_won = excluded.duels_won,
+            fouls_drawn = excluded.fouls_drawn
     """, (
         profile["id"],
         profile["team_id"],
