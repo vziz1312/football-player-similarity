@@ -1,46 +1,14 @@
 import math
-import json
-import unicodedata
+import database
 
-
-def normalize_name(name):
-    name=name.lower()
-    name=unicodedata.normalize("NFD", name)
-    name="".join(
-        char for char in name if unicodedata.category(char) != "Mn"
-    )
-    return name
 
 def get_player_profile(player_name):
-
-    players = load_player_profiles()
-    search_name = normalize_name(player_name)
-
-    for saved_player in players:
-        saved_name = normalize_name(saved_player["name"])
-
-        if search_name in saved_name:
-            print(
-                "Player found in local storage:",
-                saved_player["name"]
-            )
-            return saved_player
-
-    print("Player not found in local dataset.")
-    return None
-
-def save_player_profile(profile):
-    with open("players.json", "r") as file:
-        players=json.load(file)
-    players.append(profile)
-
-    with open("players.json", "w") as file:
-        json.dump(players, file, indent=4)
-
-def load_player_profiles():
-    with open("players.json", "r") as file:
-        players=json.load(file)
-    return players
+    profile = database.find_player_profile(player_name)
+    if profile:
+        print("Player found in SQLite:", profile["name"])
+    else:
+        print("Player not found or name is ambiguous in the SQLite dataset.")
+    return profile
 
 
 
@@ -94,11 +62,18 @@ player_pool = [
 
 
 
+all_profiles = database.get_player_profiles()
+profiles_by_name = {
+    profile["name"].casefold(): profile for profile in all_profiles
+}
 pool_profiles = []
 
 for player_name in player_pool:
 
-    profile = get_player_profile(player_name)
+    profile = next(
+        (item for name, item in profiles_by_name.items() if player_name in name),
+        None,
+    )
 
     if profile:
 
@@ -107,7 +82,7 @@ for player_name in player_pool:
 for profile in pool_profiles:
     print(
         profile["name"],
-        "→",profile["position"],
+        "->", profile["position"],
     )
 print(
     "Number of profiles:",

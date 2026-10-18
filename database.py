@@ -1,6 +1,14 @@
 import sqlite3
+from pathlib import Path
+
+
+DATABASE_PATH = Path(__file__).with_name("football.db")
+
+
 def get_connection():
-    return sqlite3.connect("football.db")
+    connection = sqlite3.connect(DATABASE_PATH)
+    connection.row_factory = sqlite3.Row
+    return connection
 
 def create_players_table(cursor):
     cursor.execute("""
@@ -149,8 +157,66 @@ def insert_season(cursor, season_id, year):
     """, (season_id, year))
 
 
+PER_90_FIELDS = {
+    "goals_per_90": "goals",
+    "assists_per_90": "assists",
+    "shots_per_90": "shots",
+    "passes_per_90": "passes",
+    "key_passes_per_90": "key_passes",
+    "dribbles_per_90": "dribbles",
+    "duels_per_90": "duels",
+    "duels_won_per_90": "duels_won",
+}
+
+
+def get_player_profiles(league_id=140, season_id=2023):
+    """Return player statistics in the profile shape used by the scouting app."""
+    query = """
+        SELECT p.id, p.name, p.position, t.name AS team_name,
+               s.minutes, s.rating, s.goals, s.assists, s.shots,
+               s.passes, s.key_passes, s.dribbles, s.duels,
+               s.duels_won, s.fouls_drawn
+        FROM players AS p
+        JOIN player_stats AS s ON s.player_id = p.id
+        LEFT JOIN teams AS t ON t.id = s.team_id
+        WHERE s.league_id = ? AND s.season_id = ?
+        ORDER BY p.name
+    """
+    with get_connection() as connection:
+        rows = connection.execute(query, (league_id, season_id)).fetchall()
+
+    profiles = []
+    for row in rows:
+        profile = dict(row)
+        minutes = profile.get("minutes") or 0
+        for per_90_field, raw_field in PER_90_FIELDS.items():
+            value = profile.get(raw_field) or 0
+            profile[per_90_field] = value * 90 / minutes if minutes else 0
+        profiles.append(profile)
+    return profiles
+
+
+def find_player_profile(player_name, league_id=140, season_id=2023):
+    """Find a player by exact name first, then by an unambiguous partial name."""
+    import unicodedata
+
+    def normalize(value):
+        value = unicodedata.normalize("NFD", value.casefold())
+        return "".join(char for char in value if unicodedata.category(char) != "Mn")
+
+    query = normalize(player_name.strip())
+    if not query:
+        return None
+    profiles = get_player_profiles(league_id, season_id)
+    exact = [profile for profile in profiles if normalize(profile["name"]) == query]
+    if exact:
+        return exact[0]
+    matches = [profile for profile in profiles if query in normalize(profile["name"])]
+    return matches[0] if len(matches) == 1 else None
+
+
 def main():
-    connection = sqlite3.connect("football.db")
+    connection = get_connection()
 
     print("Database connected successfully")
 
