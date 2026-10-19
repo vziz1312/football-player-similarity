@@ -1,6 +1,15 @@
 import math
 import database
 from similarity import cosine_similarity
+import unicodedata
+
+def normalize_name(name):
+    name = unicodedata.normalize("NFKD", name)
+    name = "".join(
+        char for char in name
+        if not unicodedata.combining(char)
+    )
+    return name.casefold().strip()
 
 
 def get_player_profile(player_name):
@@ -32,19 +41,25 @@ player_pool = [
 all_profiles = database.get_player_profiles()
 
 profiles_by_name = {
-    profile["name"].casefold(): profile for profile in all_profiles
+    normalize_name(profile["name"]): profile
+    for profile in all_profiles
 }
+
 pool_profiles = []
 
 for player_name in player_pool:
+    normalized_name = normalize_name(player_name)
 
     profile = next(
-        (item for name, item in profiles_by_name.items() if player_name in name),
+        (
+            item
+            for name, item in profiles_by_name.items()
+            if normalized_name in name
+        ),
         None,
     )
 
-    if profile:
-
+    if profile is not None and profile not in pool_profiles:
         pool_profiles.append(profile)
 
 for profile in pool_profiles:
