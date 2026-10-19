@@ -1,5 +1,6 @@
 import math
 import database
+from similarity import cosine_similarity
 
 
 def get_player_profile(player_name):
@@ -11,40 +12,6 @@ def get_player_profile(player_name):
     return profile
 
 
-
-def cosine_similarity(vector1, vector2):
-
-    dot_product = 0
-
-    magnitude1 = 0
-
-    magnitude2 = 0
-
-    for i in range(len(vector1)):
-
-        dot_product += (
-            vector1[i] * vector2[i]
-        )
-
-        magnitude1 += (
-            vector1[i] ** 2
-        )
-
-        magnitude2 += (
-            vector2[i] ** 2
-        )
-
-    magnitude1 = math.sqrt(magnitude1)
-
-    magnitude2 = math.sqrt(magnitude2)
-
-    if magnitude1 == 0 or magnitude2 == 0:
-
-        return 0
-
-    return dot_product / (
-        magnitude1 * magnitude2
-    )
 
 
 
@@ -63,6 +30,7 @@ player_pool = [
 
 
 all_profiles = database.get_player_profiles()
+
 profiles_by_name = {
     profile["name"].casefold(): profile for profile in all_profiles
 }
@@ -148,7 +116,15 @@ features = [
 
 ]
 
+reference_vectors = []
 
+for profile in all_profiles:
+    vector = []
+
+    for feature in features:
+        vector.append(profile[feature])
+
+    reference_vectors.append(vector)
 
 
 pool_vectors = []
@@ -168,113 +144,43 @@ for profile in filtered_pool:
 
 normalized_vectors = []
 
-for feature_index in range(
-    len(features)
-):
-
+for feature_index in range(len(features)):
     values = []
 
-    for vector in pool_vectors:
-
-        values.append(
-            vector[feature_index]
-        )
+    for vector in reference_vectors:
+        values.append(vector[feature_index])
 
     minimum = min(values)
-
     maximum = max(values)
 
     normalized_column = []
 
-    for value in values:
+    for vector in pool_vectors:
+        value = vector[feature_index]
 
         if maximum == minimum:
-
             normalized_value = 0
-
         else:
-
             normalized_value = (
-                value - minimum
-            ) / (
-                maximum - minimum
+                (value - minimum) / (maximum - minimum)
             )
 
-        normalized_column.append(
-            normalized_value
-        )
+        normalized_column.append(normalized_value)
 
-    normalized_vectors.append(
-        normalized_column
-    )
+    normalized_vectors.append(normalized_column)
 
 
 normalized_player_vectors = []
 
-for player_index in range(
-    len(filtered_pool)
-):
-
+for player_index in range(len(filtered_pool)):
     vector = []
 
-    for feature_index in range(
-        len(features)
-    ):
-
+    for feature_index in range(len(features)):
         vector.append(
-            normalized_vectors[
-                feature_index
-            ][
-                player_index
-            ]
+            normalized_vectors[feature_index][player_index]
         )
 
-    normalized_player_vectors.append(
-        vector
-    )
-
-
-
-
-target_vector = []
-
-for feature_index in range(
-    len(features)
-):
-
-    values = []
-
-    for vector in pool_vectors:
-
-        values.append(
-            vector[feature_index]
-        )
-
-    minimum = min(values)
-
-    maximum = max(values)
-
-    value = player1[
-        features[feature_index]
-    ]
-
-    if maximum == minimum:
-
-        normalized_value = 0
-
-    else:
-
-        normalized_value = (
-            value - minimum
-        ) / (
-            maximum - minimum
-        )
-
-    target_vector.append(
-        normalized_value
-    )
-
-
+    normalized_player_vectors.append(vector)
 
 similar_players = []
 
@@ -291,14 +197,16 @@ if player1_index is None:
     print("Target player is missing from the filtered pool.")
     exit()
 
+
+
 for i in range(len(filtered_pool)):
     if i == player1_index:
         continue
 
     similarity = cosine_similarity(
-        pool_vectors[player1_index],
-        pool_vectors[i],
-    )
+    normalized_player_vectors[player1_index],
+    normalized_player_vectors[i],
+)
 
     similar_players.append(
         (filtered_pool[i]["name"], similarity)
