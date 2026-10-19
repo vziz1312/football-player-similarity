@@ -278,35 +278,36 @@ for feature_index in range(
 
 similar_players = []
 
-for i in range(
-    len(filtered_pool)
-):
+player1_index = next(
+    (
+        index
+        for index, profile in enumerate(filtered_pool)
+        if profile["name"].casefold() == player1["name"].casefold()
+    ),
+    None,
+)
 
-    if filtered_pool[i]["name"].lower() == player1["name"].lower():
+if player1_index is None:
+    print("Target player is missing from the filtered pool.")
+    exit()
 
+for i in range(len(filtered_pool)):
+    if i == player1_index:
         continue
 
     similarity = cosine_similarity(
-
-        target_vector,
-
-        normalized_player_vectors[i]
-
+        pool_vectors[player1_index],
+        pool_vectors[i],
     )
 
     similar_players.append(
-        (
-            filtered_pool[i]["name"],
-            similarity
-        )
+        (filtered_pool[i]["name"], similarity)
     )
-
 
 similar_players.sort(
     key=lambda x: x[1],
     reverse=True
 )
-
 
 print(
     "\n===== SIMILAR PLAYERS ====="
