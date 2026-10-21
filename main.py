@@ -72,31 +72,53 @@ if not pool_profiles:
 
     exit()
 
+position_features = {
+    "Attacker": [
+        "goals_per_90",
+        "shots_per_90",
+        "assists_per_90",
+        "key_passes_per_90",
+        "dribbles_per_90",
+    ],
+    "Forward": [
+        "goals_per_90",
+        "shots_per_90",
+        "assists_per_90",
+        "key_passes_per_90",
+        "dribbles_per_90",
+    ],
+    "Midfielder": [
+        "passes_per_90",
+        "key_passes_per_90",
+        "assists_per_90",
+        "dribbles_per_90",
+        "duels_won_per_90",
+    ],
+    "Defender": [
+        "passes_per_90",
+        "duels_per_90",
+        "duels_won_per_90",
+    ],
+    "Goalkeeper": [
+        "rating",
+    ],
+}
+
 
 filtered_pool=[]
 for profile in pool_profiles:
     if profile["position"] == player1["position"]:
         filtered_pool.append(profile)
 
-features = [
+features = position_features.get(player1["position"])
 
-    "goals_per_90",
+if not features:
+    print(
+        f"No feature rules defined for position: "
+        f"{player1['position']}"
+    )
+    exit()
 
-    "assists_per_90",
-
-    "shots_per_90",
-
-    "passes_per_90",
-
-    "key_passes_per_90",
-
-    "dribbles_per_90",
-
-    "duels_per_90",
-
-    "duels_won_per_90"
-
-]
 
 reference_vectors = []
 
