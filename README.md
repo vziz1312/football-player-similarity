@@ -6,6 +6,19 @@ A football scouting project that compares players based on their statistics and 
 
 The similarity score is calculated using cosine similarity between player-stat vectors. It measures how closely two players' statistical profiles align across the selected features. A higher score indicates greater similarity in those statistical dimensions, but it does **not** mean the players are that percentage identical in playing style or overall ability. Results also depend on the selected statistics, playing time, and available data.
 
+## Current Limitations
+
+The experimental Transfermarkt-based model compares players using recent appearances, goals, assists, penalty goals, height and preferred foot. It filters players by broad position and ranks candidates using a distance-based similarity score.
+
+This version has several limitations:
+- Limited recent data for some players can make rankings unreliable.
+- Goals and assists do not fully capture a player's playing style or tactical role.
+- Height and preferred foot provide only limited information about how a player plays.
+- Similarity scores are relative mathematical measures, not probabilities or percentages of playing-style similarity.
+- The model has not yet been validated against expert scouting assessments.
+
+Future improvements will focus on better feature normalization, richer performance data and position-specific comparisons.
+
 ## Technologies
 
 Python, Requests, API-Football, Git and GitHub.
