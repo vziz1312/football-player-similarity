@@ -24,49 +24,16 @@ def get_player_profile(player_name):
 
 
 
-player_pool = [
-    "witsel",
-    "oblak",
-    "gimenez",
-    "griezmann",
-    "morata",
-    "lewandowski",
-    "de jong",
-    "gundogan",
-]
-
-
-
-
 all_profiles = database.get_player_profiles()
 
-profiles_by_name = {
-    normalize_name(profile["name"]): profile
-    for profile in all_profiles
-}
-
-pool_profiles = []
-
-for player_name in player_pool:
-    normalized_name = normalize_name(player_name)
-
-    profile = next(
-        (
-            item
-            for name, item in profiles_by_name.items()
-            if normalized_name in name
-        ),
-        None,
-    )
-
-    if profile is not None and profile not in pool_profiles:
-        pool_profiles.append(profile)
+pool_profiles = all_profiles.copy()
 
 for profile in pool_profiles:
     print(
         profile["name"],
         "->", profile["position"],
     )
+
 print(
     "Number of profiles:",
     len(pool_profiles)
@@ -294,6 +261,38 @@ print(
     vector2
 )
 
+player2_index = next(
+    (
+        index
+        for index, profile in enumerate(filtered_pool)
+        if profile["name"].casefold()
+        == player2["name"].casefold()
+    ),
+    None,
+)
+
+print("\n===== DIRECT SIMILARITY =====")
+
+if player2_index is None:
+    print(
+        "Direct similarity unavailable: the players "
+        "have different positions or player 2 is not in the pool."
+    )
+else:
+    direct_similarity = cosine_similarity(
+        normalized_player_vectors[player1_index],
+        normalized_player_vectors[player2_index],
+    )
+
+    print(
+        player1["name"],
+        "vs",
+        player2["name"],
+        ":",
+        round(direct_similarity * 100, 2),
+        "%"
+    )
+    
 
 print(
     "\n===== COMPARISON ====="
