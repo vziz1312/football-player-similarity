@@ -85,20 +85,28 @@ Main files:
 Install the dependencies:
 
 ```bash
-pip install requests python-dotenv pandas
+pip install -r requirements.txt
 ```
 
 The hybrid model itself uses Python's standard library, including `sqlite3`.
 
 ## Configuration and Data
 
-The API-Football workflow uses an API key stored in a local `.env` file:
+The API-Football workflow uses an API key stored in a local `.env` file.
+
+The `.env.example` template contains:
 
 ```dotenv
 API_KEY=your_api_key_here
 ```
 
-Never commit your real API key or `.env` file to GitHub.
+Create your local `.env` file by running:
+
+```cmd
+copy .env.example .env
+```
+
+Edit `.env` and replace `your_api_key_here` with your actual API-Football key. Never commit `.env` or publish your API key.
 
 The SQLite databases are local data files and are intentionally excluded
 from Git by the `.gitignore` rules. They are not included in a fresh clone
@@ -111,9 +119,9 @@ The hybrid model expects `transfermarkt.db` beside
 `transfermarkt_scouting_hybrid.py`, with `players` and `performances`
 tables and a populated `nb_on_pitch` appearance field.
 
-The original application uses `football.db`. Initializing its schema is
-not the same as importing player statistics; the required data must also
-be available before meaningful comparisons can be performed.
+The original application uses `football.db`. Initializing its schema
+is not the same as importing player statistics; the required data must
+also be available before meaningful comparisons can be performed.
 
 ## Running the Models
 

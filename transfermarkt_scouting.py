@@ -45,8 +45,10 @@ def find_similar_players(player_name, limit=10, min_appearances=100):
                 SUM(COALESCE(s.assists, 0)) AS assists,
                 SUM(COALESCE(s.penalty_goals, 0)) AS penalty_goals,
                 SUM(COALESCE(s.yellow_cards, 0)) AS yellow_cards
-            FROM players p
+                FROM players p
             JOIN performances s ON s.player_id = p.player_id
+            WHERE p.player_name IS NOT NULL
+            AND TRIM(p.player_name) <> ''
             GROUP BY
                 p.player_id,
                 p.player_name,
@@ -68,11 +70,10 @@ def find_similar_players(player_name, limit=10, min_appearances=100):
 
         def make_vector(row):
             appearances = row["appearances"]
+
             return [
                 row["goals"] / appearances,
                 row["assists"] / appearances,
-                row["penalty_goals"] / appearances,
-                row["yellow_cards"] / appearances,
             ]
 
         target_vector = make_vector(target_stats)
@@ -103,6 +104,8 @@ def find_similar_players(player_name, limit=10, min_appearances=100):
                 "name": row["player_name"],
                 "position": row["main_position"] or row["position"],
                 "appearances": row["appearances"],
+                "goals_per_app": row["goals"] / row["appearances"],
+                "assists_per_app": row["assists"] / row["appearances"],
                 "goals": row["goals"],
                 "assists": row["assists"],
                 "penalty_goals": row["penalty_goals"],
@@ -138,5 +141,7 @@ if __name__ == "__main__":
                 f"| Assists: {p['assists']:g} "
                 f"| Penalties: {p['penalty_goals']:g} "
                 f"| Yellow cards: {p['yellow_cards']:g} "
-                f"| Similarity: {p['similarity']:.3f}"
+                f"| Similarity: {p['similarity']:.3f} "
+                f"| Goals/App: {p['goals_per_app']:.3f} "
+                f"| Assists/App: {p['assists_per_app']:.3f} "
             )
