@@ -254,18 +254,24 @@ def find_similar_players(
                 min_appearances=min_career_appearances,
             )
 
-        # Restrict both the baseline and rankings to the same position.
+                # Keep only eligible players in the target's position.
         position_rows = [
             row for row in candidate_rows
             if same_position(row, target_stats)
         ]
 
-        if not position_rows:
-            print("No candidates available for the target's position.")
+        # Exclude the target from both the baseline and recommendations.
+        comparison_rows = [
+            row for row in position_rows
+            if row["player_id"] != target["player_id"]
+        ]
+
+        if not comparison_rows:
+            print("No eligible comparison players found for this position.")
             return []
 
         try:
-            position_rates = calculate_position_baseline(position_rows)
+            position_rates = calculate_position_baseline(comparison_rows)
         except ValueError as error:
             print(str(error))
             return []
@@ -273,9 +279,7 @@ def find_similar_players(
         target_vector = make_vector(target_stats, position_rates)
         results = []
 
-        for candidate in position_rows:
-            if candidate["player_id"] == target["player_id"]:
-                continue
+        for candidate in comparison_rows:
 
             candidate_vector = make_vector(candidate, position_rates)
 
