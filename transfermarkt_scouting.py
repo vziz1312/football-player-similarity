@@ -1,33 +1,61 @@
-
 import sqlite3
+import re
+import unicodedata
 from pathlib import Path
 from math import sqrt
 
 DB_PATH = Path(__file__).with_name("transfermarkt.db")
 
+def normalize_player_name(name):
+    name = unicodedata.normalize("NFKD", name.strip()).casefold()
+
+    return "".join(
+        char for char in name
+        if not unicodedata.combining(char)
+    )
+
+
+def normalize_player_base_name(name):
+    name = re.sub(r"\s+\(\d+\)$", "", name.strip())
+    return normalize_player_name(name)
 
 def find_similar_players(player_name, limit=10, min_appearances=100):
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
 
     try:
-        target = connection.execute(
+        player_rows = connection.execute(
             """
             SELECT player_id, player_name, main_position, position
             FROM players
-            WHERE LOWER(TRIM(player_name)) = LOWER(TRIM(?))
-               OR LOWER(TRIM(player_name)) LIKE LOWER(TRIM(?))
-            ORDER BY
-                CASE WHEN LOWER(TRIM(player_name)) = LOWER(TRIM(?))
-                     THEN 0 ELSE 1 END
-            LIMIT 1
-            """,
+            WHERE player_name IS NOT NULL
+            AND TRIM(player_name) <> ''
+            """
+        ).fetchall()
+
+        search_name = normalize_player_name(player_name)
+
+        target = next(
             (
-                player_name.strip(),
-                f"{player_name.strip()} (%)",
-                player_name.strip(),
+                row for row in player_rows
+                if normalize_player_name(row["player_name"]) == search_name
             ),
-        ).fetchone()
+            None,
+        )
+
+        if target is None and not re.search(
+            r"\s+\(\d+\)$", player_name.strip()
+        ):
+            search_name = normalize_player_base_name(player_name)
+
+            target = next(
+                (
+                    row for row in player_rows
+                    if normalize_player_base_name(row["player_name"])
+                    == search_name
+                ),
+                None,
+            )
 
         if target is None:
             print(f"Player not found: {player_name}")
